@@ -1,20 +1,36 @@
-//***THIS IS THE NEW VERSION THAT WORKS WITH THE NEW LIBRARIES!!!***
-// TFTLCD.h and TouchScreen.h are from adafruit.com where you can also purchase a really nice 2.8" TFT with touchscreen :)
-// 2012 Jeremy Saglimbeni - thecustomgeek.com
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_TFTLCD.h> // Hardware-specific library
+#include <Elegoo_TFTLCD.h>
+// TouchScreen - Version: Latest 
 #include <TouchScreen.h>
 #include <EEPROM.h>
 
-#if not defined USE_ADAFRUIT_SHIELD_PINOUT 
- #error "For use with the shield, make sure to #define USE_ADAFRUIT_SHIELD_PINOUT in the TFTLCD.h library file"
-#endif
-
-// These are the pins for the shield!
-#define YP A1  // must be an analog pin, use "An" notation!
+#define YP A3  // must be an analog pin, use "An" notation!
 #define XM A2  // must be an analog pin, use "An" notation!
-#define YM 7   // can be a digital pin
-#define XP 6   // can be a digital pin
+#define YM 9   // can be a digital pin
+#define XP 8   // can be a digital pin
+
+#define TS_MINX 150
+#define TS_MINY 120
+#define TS_MAXX 920
+#define TS_MAXY 940
+
+// Assign human-readable names to some common 16-bit color values:
+#define BLACK   0x0000
+#define BLUE    0x001F
+#define RED     0xF800
+#define GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
+
+#define MINPRESSURE 10
+#define MAXPRESSURE 1000
+
+#define LCD_CS A3
+#define LCD_CD A2
+#define LCD_WR A1
+#define LCD_RD A0
+#define LCD_RESET A4
 
 #define TS_MINX 150
 #define TS_MINY 120
@@ -30,65 +46,41 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 #define LCD_CD A2
 #define LCD_WR A1
 #define LCD_RD A0 
+
 // Color definitions - in 5:6:5
-#define	BLACK           0x0000
-#define	BLUE            0x001F
-#define	RED             0xF800
-#define	GREEN           0x07E0
+#define  BLACK           0x0000
+#define BLUE            0x001F
+#define RED             0xF800
+#define GREEN           0x07E0
 #define CYAN            0x07FF
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0 
 #define WHITE           0xFFFF
-#define TEST            0x1BF5
-#define JJCOLOR         0x1CB6
-#define JJORNG          0xFD03
-Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, 0);
+
+Elegoo_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, 0);
+
 int i = 0;
 int page = 0;
-int blv;
 int sleep = 0;
 int pulsev = 0;
 int redflag = 0;
 int greenflag = 0;
-int redled = 2;
-int greenled = A4;
-int backlight = 3;
-int battfill;
+
 unsigned long sleeptime;
-unsigned long battcheck = 10000; // the amount of time between voltage check and battery icon refresh
-unsigned long prevbatt;
-int battv;
-int battold;
-int battpercent;
-int barv;
+
 int prevpage;
 int sleepnever;
 int esleep;
-int backlightbox;
+
 int antpos = 278;
 unsigned long awakeend;
 unsigned long currenttime;
 unsigned long ssitime;
-char voltage[10];
-char battpercenttxt [10];
-long readVcc() {
-  long result;
-  // Read 1.1V reference against AVcc
-  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  delay(2); // Wait for Vref to settle
-  ADCSRA |= _BV(ADSC); // Convert
-  while (bit_is_set(ADCSRA,ADSC));
-  result = ADCL;
-  result |= ADCH<<8;
-  result = 1126400L / result; // Back-calculate AVcc in mV
-  return result;
-}
+
 void setup(void) {
-  pinMode(3, OUTPUT);
-  pinMode(redled, OUTPUT);
-  pinMode(greenled, OUTPUT);
+  // pinMode(3, OUTPUT);
+
   esleep = EEPROM.read(1);
-  blv = EEPROM.read(2);
 //esleep = 3; // uncomment this and run once if you have not used the EEPROM before on your Arduino! Comment and reload after that.
 //blv = 255; // uncomment this and run once if you have not used the EEPROM before on your Arduino! Comment and reload after that.c
   if (esleep == 1) {
@@ -128,37 +120,20 @@ void setup(void) {
     sleepnever = 1;
   }
   awakeend = sleeptime + 1000; // set the current sleep time based on what the saved settings in EEPROM were
-  pinMode(backlight, OUTPUT);
   Serial.begin(9600);
-  Serial.println("JOS");
-  Serial.println("Jeremy Saglimbeni  -  2011");
+  Serial.println("TFT Menu");
+  Serial.println("Michael Keyser TFT Fork (Jeremy Saglimbeni  -  2011)");
   
   tft.reset();
-  
-  uint16_t identifier = tft.readRegister(0x0);
-  if (identifier == 0x9325) {
-    Serial.println("Found ILI9325");
-  } else if (identifier == 0x9328) {
-    Serial.println("Found ILI9328");
-  } else if (identifier == 0x7575) {
-    Serial.println("Found HX8347G");
-  } else {
-    Serial.print("Unknown driver chip ");
-    Serial.println(identifier, HEX);
-    while (1);
-  }
-
+  uint16_t identifier = 0x9341; // specific driver for the Elegoo TFT
   tft.begin(identifier); 
   tft.fillScreen(BLACK);
   tft.setRotation(1);
-  tft.fillRect(71, 70, 50, 100, JJCOLOR);
-  tft.fillRect(134, 70, 50, 100, JJCOLOR);
-  tft.fillRect(197, 70, 50, 100, JJCOLOR);
+  tft.fillRect(71, 70, 50, 100, CYAN);
+  tft.fillRect(134, 70, 50, 100, CYAN);
+  tft.fillRect(197, 70, 50, 100, CYAN);
   tft.drawRect(46, 45, 228, 150, WHITE);
-  for(i = 0 ; i <= blv; i+=1) { 
-    analogWrite(backlight, i);
-    delay(2);
-  }
+  
   delay(250);
   tft.setCursor(85, 100);
   tft.setTextSize(5);
@@ -178,14 +153,14 @@ void setup(void) {
   tft.print("thecustomgeek.com");
   delay(500);
   tft.fillScreen(BLACK);
-  tft.fillRect(0, 0, 320, 10, JJCOLOR); // status bar
+  tft.fillRect(0, 0, 320, 10, WHITE); // status bar
   drawhomeicon(); // draw the home icon
   tft.setCursor(1, 1);
   tft.print("Your status bar message here.    JOS 1.5 Beta");
   tft.drawRect(297, 1, 20, 8, WHITE); //battery body
   tft.fillRect(317, 3, 2, 4, WHITE); // battery tip
   tft.fillRect(298, 2, 18, 6, BLACK); // clear the center of the battery
-  drawbatt();
+
   ant(); // draw the bas "antenna" line without the "signal waves"
   signal(); // draw the "signal waves" around the "antenna"
   homescr(); // draw the homescreen
@@ -197,7 +172,7 @@ void setup(void) {
 void loop() {
   
   digitalWrite(13, HIGH);
-  Point p = ts.getPoint();
+  TSPoint p = ts.getPoint();
   digitalWrite(13, LOW);
   // if you're sharing pins, you'll need to fix the directions of the touchscreen pins!
   //pinMode(XP, OUTPUT);
@@ -208,10 +183,6 @@ void loop() {
   unsigned long currentawake = millis();
   if((currentawake > awakeend) && (sleepnever == 0)) {
     if (sleep == 0) {
-      for(i = blv ; i >= 0; i-=1) {
-        analogWrite(backlight, i);
-        delay(4);
-      }
       sleep = 1;
     }
   }
@@ -221,10 +192,6 @@ void loop() {
   if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
     awakeend = currenttime + sleeptime; //set the sleep time when screen is pressed
     if (sleep == 1) { // if asleep, then fade the backlight up
-      for(i = 0 ; i <= blv; i+=1) { 
-        analogWrite(backlight, i);
-        delay(1);
-      }
       sleep = 0; // change the sleep mode to "awake"
       return;
     }
@@ -253,35 +220,35 @@ void loop() {
         tft.setTextSize(2);
         tft.setCursor(12, 213);
         tft.print("Menu 5 B1"); // display the command in the "message box"
-        yled(550); // flash the LED yellow for a bit - change the 550 value to change LED time on
+        //yled(550); // flash the LED yellow for a bit - change the 550 value to change LED time on
         clearmessage(); // after the LED goes out, clear the message
       }
       if (page == 4) {
         m4b1action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B1");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b1action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B1");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b1action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B1");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b1action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B1");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) { // if you are on the "home" page (0)
@@ -295,35 +262,35 @@ void loop() {
         m5b2action();
         tft.setCursor(12, 213);
         tft.print("Menu 5 B2");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 4) {
         m4b2action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B2");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b2action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B2");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b2action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B2");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b2action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B2");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) {
@@ -337,35 +304,35 @@ void loop() {
         m5b3action();
         tft.setCursor(12, 213);
         tft.print("Menu 5 B3");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 4) {
         m4b3action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B3");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b3action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B3");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b3action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B3");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b3action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B3");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) {
@@ -379,35 +346,35 @@ void loop() {
         m5b4action();
         tft.setCursor(12, 213);
         tft.print("Menu 5 B4");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 4) {
         m4b4action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B4");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b4action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B4");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b4action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B4");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b4action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B4");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) {
@@ -421,35 +388,35 @@ void loop() {
         m5b5action();
         tft.setCursor(12, 213);
         tft.print("Menu 5 B5");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 4) {
         m4b5action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B5");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b5action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B5");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b5action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B5");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b5action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B5");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) {
@@ -463,35 +430,35 @@ void loop() {
         m5b6action();
         tft.setCursor(12, 213);
         tft.print("Menu 5 B6");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 4) {
         m4b6action();
         tft.setCursor(12, 213);
         tft.print("Menu 4 B6");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 3) {
         m3b6action();
         tft.setCursor(12, 213);
         tft.print("Menu 3 B6");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 2) {
         m2b6action();
         tft.setCursor(12, 213);
         tft.print("Menu 2 B6");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 1) {
         m1b6action();
         tft.setCursor(12, 213);
         tft.print("Menu 1 B6");
-        yled(550);
+        //yled(550);
         clearmessage();
       }
       if (page == 0) {
@@ -508,7 +475,7 @@ void loop() {
         tft.setCursor(12, 213);
         tft.print("Settings Saved"); // display settings saved in message box
         EEPROM.write(1, esleep); // write the sleep value to EEPROM, so it will not lose settings without power
-        EEPROM.write(2, blv); // write the backlight value to EEPROM, so it will not lose settings without power
+
         clearsettings(); // erase all the drawings on the settings page
       }
       if (page == 0) { // if you are already on the home page
@@ -526,17 +493,6 @@ void loop() {
     // message area
     if (p.y > 0 && p.y < 246 && p.x > 4 && p.x < 44) {
       clearmessage(); // erase the message
-    }
-    // backlight buttons
-    if (p.y > 0 && p.y < 56 && p.x > 176 && p.x < 226) {
-      if (page == 6) {
-        blightdown();
-      }
-    }
-    if (p.y > 260 && p.y < 320 && p.x > 180 && p.x < 230) {
-      if (page == 6) {
-        blightup();
-      }
     }
     // sleep buttons
     if (p.y > 0 && p.y < 56 && p.x > 116 && p.x < 166) {
@@ -563,31 +519,9 @@ void loop() {
      }
      */
   }
-  if(currenttime - prevbatt > battcheck) {
-    drawbatt();
-    prevbatt = currenttime;
 
-  }
 }
-void yled(int xled) { // "flashes" the "yellow" LED
-  for(i = xled ; i >= 0; i-=1) { 
-    digitalWrite(greenled, LOW);
-    digitalWrite(redled, HIGH);
-    delay(1);
-    digitalWrite(greenled, HIGH);
-    digitalWrite(redled, LOW);
-    delay(1);    
-  }
-  digitalWrite(greenled, LOW);
-  if (greenflag == 1) {
-    digitalWrite(redled, LOW);
-    digitalWrite(greenled, HIGH);
-  }
-  if (redflag == 1) {
-    digitalWrite(greenled, LOW);
-    digitalWrite(redled, HIGH);
-  }
-}
+
 void redraw() { // redraw the page
   if ((prevpage != 6) || (page !=7)) {
     clearcenter();
@@ -741,7 +675,7 @@ void settingsscr() {
   tft.setTextSize(3);
   tft.fillRect(0, 20, 60, 50, RED);
   tft.drawRect(0, 20, 60, 50, WHITE);
-  tft.drawRect(80, 20, 160, 50, JJCOLOR);
+  tft.drawRect(80, 20, 160, 50, WHITE);
   tft.fillRect(260, 20, 60, 50, GREEN);
   tft.drawRect(260, 20, 60, 50, WHITE);
   tft.setCursor(22, 33);
@@ -752,12 +686,11 @@ void settingsscr() {
   tft.setCursor(120, 31);
   tft.print("Backlight Level");
   tft.drawRect(110, 48, 100, 10, WHITE);
-  blbar();
   // sleep time
   tft.setTextSize(3);
   tft.fillRect(0, 80, 60, 50, RED);
   tft.drawRect(0, 80, 60, 50, WHITE);
-  tft.drawRect(80, 80, 160, 50, JJCOLOR);
+  tft.drawRect(80, 80, 160, 50, WHITE);
   tft.fillRect(260, 80, 60, 50, GREEN);
   tft.drawRect(260, 80, 60, 50, WHITE);
   tft.setCursor(22, 93);
@@ -772,7 +705,7 @@ void settingsscr() {
   /*
   tft.fillRect(0, 140, 60, 50, RED);
    tft.drawRect(0, 140, 60, 50, WHITE);
-   tft.drawRect(80, 140, 160, 50, JJCOLOR);
+   tft.drawRect(80, 140, 160, 50, WHITE);
    tft.fillRect(260, 140, 60, 50, GREEN);
    tft.drawRect(260, 140, 60, 50, WHITE);
    tft.print(22, 153, "-", WHITE, 3);
@@ -780,12 +713,10 @@ void settingsscr() {
    tft.print(282, 153, "+", WHITE, 3);
    tft.drawRect(110, 168, 100, 10, WHITE);
    */
-  battv = readVcc(); // read the voltage
-  itoa (battv, voltage, 10);
   tft.setTextColor(YELLOW);
   tft.setTextSize(2);
   tft.setCursor(12, 213);
-  tft.print(voltage);
+  tft.print(1234);
   tft.setCursor(60, 213);
   tft.print("mV");
   /*
@@ -1032,41 +963,17 @@ void m5b5action() {
 }
 void m5b6action() {
 }
-void blightup() { // increase the backlight brightness
-  blv = blv + 5;
-  if (blv >= 255) {
-    blv = 255;
-  }
-  analogWrite(backlight, blv);
-  blbar();
-}
-void blightdown() { // decrease the backlight brightness
-  blv = blv - 5;
-  if (blv <= 5) {
-    blv = 5;
-  }
-  analogWrite(backlight, blv);
-  blbar();
-}
-void blbar() { // this function fills the yellow bar in the backlight brightness adjustment
-  if (blv < barv) {
-    tft.fillRect(111, 49, 98, 8, BLACK);
-  }
-  backlightbox = map(blv, 1, 255, 0, 98);
-  tft.fillRect(111, 49, backlightbox, 8, YELLOW);
-  barv = blv;
-  delay(25);
-}
+
 void ant() {
   tft.fillRect((antpos + 5), 4, 1, 6, WHITE); // draws the "antenna" for the signal indicator
 }
 void boxes() { // redraw the button outline boxes
-  tft.drawRect(0, 20, 150, 50, JJCOLOR);
-  tft.drawRect(170, 20, 150, 50, JJCOLOR);
-  tft.drawRect(0, 80, 150, 50, JJCOLOR);
-  tft.drawRect(170, 80, 150, 50, JJCOLOR);
-  tft.drawRect(0, 140, 150, 50, JJCOLOR);
-  tft.drawRect(170, 140, 150, 50, JJCOLOR);
+  tft.drawRect(0, 20, 150, 50, CYAN);
+  tft.drawRect(170, 20, 150, 50, WHITE);
+  tft.drawRect(0, 80, 150, 50, WHITE);
+  tft.drawRect(170, 80, 150, 50, WHITE);
+  tft.drawRect(0, 140, 150, 50, WHITE);
+  tft.drawRect(170, 140, 150, 50, WHITE);
 }
 void signal() { // draws a whit 'signal indicator'
   tft.drawLine((antpos + 4), 4, (antpos + 4), 5, WHITE);
@@ -1135,17 +1042,4 @@ void drawhomeiconred() { // draws a red home icon
 void clearmessage() {
   tft.fillRect(12, 213, 226, 16, BLACK); // black out the inside of the message box
 }
-void drawbatt() {
-  battv = readVcc(); // read the voltage
-  if (battv < battold) { // if the voltage goes down, erase the inside of the battery
-    tft.fillRect(298, 2, 18, 6, BLACK);
-  }
-  battfill = map(battv, 3000, 4850, 2, 18); // map the battery voltage 3000 nis the low, 4150 is the high
-  if (battfill > 7) { // if the battfill value is between 8 and 18, fill with green
-    tft.fillRect(298, 2, battfill, 6, GREEN);
-  }
-  else { // if the battfill value is below 8, fill with red
-    tft.fillRect(298, 2, battfill, 6, RED);
-  }
-  battold = battv; // this helps determine if redrawing the battfill area is necessary
-}
+
