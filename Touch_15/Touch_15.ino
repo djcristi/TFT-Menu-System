@@ -42,13 +42,8 @@
 // For the one we're using, its 300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
-#define LCD_CS A3
-#define LCD_CD A2
-#define LCD_WR A1
-#define LCD_RD A0 
-
 // Color definitions - in 5:6:5
-#define  BLACK           0x0000
+#define BLACK           0x0000
 #define BLUE            0x001F
 #define RED             0xF800
 #define GREEN           0x07E0
@@ -57,7 +52,7 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 #define YELLOW          0xFFE0 
 #define WHITE           0xFFFF
 
-Elegoo_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, 0);
+Elegoo_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
 int i = 0;
 int page = 0;
