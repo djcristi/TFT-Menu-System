@@ -1,6 +1,5 @@
 #include <Adafruit_TFTLCD.h> 
 #include <TouchScreen.h>
-#include <EEPROM.h>
 
 #define YP A3  // must be an analog pin, use "An" notation!
 #define XM A2  // must be an analog pin, use "An" notation!
@@ -32,10 +31,6 @@
 #define LCD_RD A0
 #define LCD_RESET A4
 
-#define TS_MINX 150
-#define TS_MINY 120
-#define TS_MAXX 920
-#define TS_MAXY 940
 
 // For better pressure precision, we need to know the resistance
 // between X+ and X- Use any multimeter to read it
@@ -56,65 +51,13 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
 int i = 0;
 int page = 0;
-int sleep = 0;
 int pulsev = 0;
-int redflag = 0;
-int greenflag = 0;
-
-unsigned long sleeptime;
 
 int prevpage;
-int sleepnever;
-int esleep;
 
 int antpos = 278;
-unsigned long awakeend;
-unsigned long currenttime;
-unsigned long ssitime;
 
 void setup(void) {
-  // pinMode(3, OUTPUT);
-
-  esleep = EEPROM.read(1);
-//esleep = 3; // uncomment this and run once if you have not used the EEPROM before on your Arduino! Comment and reload after that.
-//blv = 255; // uncomment this and run once if you have not used the EEPROM before on your Arduino! Comment and reload after that.c
-  if (esleep == 1) {
-    sleeptime = 10000;
-  }
-  if (esleep == 2) {
-    sleeptime = 20000;
-  }
-  if (esleep == 3) {
-    sleeptime = 30000;
-  }
-  if (esleep == 4) {
-    sleeptime = 60000;
-  }
-  if (esleep == 5) {
-    sleeptime = 120000;
-  }
-  if (esleep == 6) {
-    sleeptime = 300000;
-  }
-  if (esleep == 7) {
-    sleeptime = 600000;
-  }
-  if (esleep == 8) {
-    sleeptime = 1200000;
-  }
-  if (esleep == 9) {
-    sleeptime = 1800000;
-  }
-  if (esleep == 10) {
-    sleeptime = 3600000;
-  }
-  if (esleep == 11) {
-    sleeptime = 14400000;
-  }
-  if (esleep == 12) {
-    sleepnever = 1;
-  }
-  awakeend = sleeptime + 1000; // set the current sleep time based on what the saved settings in EEPROM were
   Serial.begin(9600);
   Serial.println("TFT Menu");
   
@@ -147,7 +90,7 @@ void setup(void) {
   tft.print("thecustomgeek.com");
   delay(500);
   tft.fillScreen(BLACK);
-  tft.fillRect(0, 0, 320, 10, WHITE); // status bar
+  tft.fillRect(0, 0, 320, 10, BLUE); // status bar
   drawhomeicon(); // draw the home icon
   tft.setCursor(1, 1);
   tft.print("Your status bar message here.    JOS 1.5 Beta");
@@ -173,30 +116,11 @@ void loop() {
   pinMode(XM, OUTPUT);
   pinMode(YP, OUTPUT);
   //pinMode(YM, OUTPUT);
-  currenttime = millis();
-  unsigned long currentawake = millis();
-  if((currentawake > awakeend) && (sleepnever == 0)) {
-    if (sleep == 0) {
-      sleep = 1;
-    }
-  }
  
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
   if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
-    awakeend = currenttime + sleeptime; //set the sleep time when screen is pressed
-    if (sleep == 1) { // if asleep, then fade the backlight up
-      sleep = 0; // change the sleep mode to "awake"
-      return;
-    }
-    /*
-    Serial.print("X = "); 
-     Serial.print(p.x);
-     Serial.print("\tY = "); 
-     Serial.print(p.y);
-     Serial.print("\tPressure = "); 
-     Serial.println(p.z);
-     */
+
     // turn from 0->1023 to tft.width
     p.x = map(p.x, TS_MINX, TS_MAXX, 240, 0);
     p.y = map(p.y, TS_MINY, TS_MAXY, 320, 0);
@@ -468,7 +392,7 @@ void loop() {
         tft.setTextColor(YELLOW);
         tft.setCursor(12, 213);
         tft.print("Settings Saved"); // display settings saved in message box
-        EEPROM.write(1, esleep); // write the sleep value to EEPROM, so it will not lose settings without power
+       // EEPROM.write(1, esleep); // write the sleep value to EEPROM, so it will not lose settings without power
 
         clearsettings(); // erase all the drawings on the settings page
       }
@@ -491,12 +415,12 @@ void loop() {
     // sleep buttons
     if (p.y > 0 && p.y < 56 && p.x > 116 && p.x < 166) {
       if (page == 6) {
-        sleepdec();
+        //sleepdec();
       }
     }
     if (p.y > 260 && p.y < 320 && p.x > 116 && p.x < 166) {
       if (page == 6) {
-        sleepinc();
+        //sleepinc();
       }
     }
     /*
@@ -513,8 +437,8 @@ void loop() {
      }
      */
   }
-
 }
+
 
 void redraw() { // redraw the page
   if ((prevpage != 6) || (page !=7)) {
@@ -694,7 +618,7 @@ void settingsscr() {
   tft.setTextSize(1);
   tft.setCursor(130, 91);
   tft.print("Sleep Time");
-  showsleep();
+//  showsleep();
   //?? uncomment this if you want a third adjustable option
   /*
   tft.fillRect(0, 140, 60, 50, RED);
@@ -719,177 +643,9 @@ void settingsscr() {
   tft.print(102, 213, battpercenttxt, YELLOW, 2);
   */
 }
-void sleepinc() { // sleep increese adjustment
-  if (sleeptime == 14400000) {
-    sleepnever = 1;
-    esleep = 12;
-    sleeptime = 11111111;
-    showsleep();
-  }
-  if (sleeptime == 3600000) {
-    sleeptime = 14400000;
-    esleep = 11;
-    showsleep();
-  }
-  if (sleeptime == 1800000) {
-    sleeptime = 3600000;
-    esleep = 10;
-    showsleep();
-  }
-  if (sleeptime == 1200000) {
-    sleeptime = 1800000;
-    esleep = 9;
-    showsleep();
-  }
-  if (sleeptime == 600000) {
-    sleeptime = 1200000;
-    esleep = 8;
-    showsleep();
-  }
-  if (sleeptime == 300000) {
-    sleeptime = 600000;
-    esleep = 7;
-    showsleep();
-  }
-  if (sleeptime == 120000) {
-    sleeptime = 300000;
-    esleep = 6;
-    showsleep();
-  }
-  if (sleeptime == 60000) {
-    sleeptime = 120000;
-    esleep = 5;
-    showsleep();
-  }
-  if (sleeptime == 30000) {
-    sleeptime = 60000;
-    esleep = 4;
-    showsleep();
-  }
-  if (sleeptime == 20000) {
-    sleeptime = 30000;
-    esleep = 3;
-    showsleep();
-  }
-  if (sleeptime == 10000) {
-    sleeptime = 20000;
-    esleep = 2;
-    showsleep();
-  }
-  delay(350);
-}
-void sleepdec() { // sleep decreese adjustment
-  if (sleeptime == 20000) {
-    sleeptime = 10000;
-    esleep = 1;
-    showsleep();
-  }
-  if (sleeptime == 30000) {
-    sleeptime = 20000;
-    esleep = 2;
-    showsleep();
-  }
-  if (sleeptime == 60000) {
-    sleeptime = 30000;
-    esleep = 3;
-    showsleep();
-  }
-  if (sleeptime == 120000) {
-    sleeptime = 60000;
-    esleep = 4;
-    showsleep();
-  }
-  if (sleeptime == 300000) {
-    sleeptime = 120000;
-    esleep = 5;
-    showsleep();
-  }
-  if (sleeptime == 600000) {
-    sleeptime = 300000;
-    esleep = 6;
-    showsleep();
-  }
-  if (sleeptime == 1200000) {
-    sleeptime = 600000;
-    esleep = 7;
-    showsleep();
-  }
-  if (sleeptime == 1800000) {
-    sleeptime = 1200000;
-    esleep = 8;
-    showsleep();
-  }
-  if (sleeptime == 3600000) {
-    sleeptime = 1800000;
-    esleep = 9;
-    showsleep();
-  }
-  if (sleeptime == 14400000) {
-    sleeptime = 3600000;
-    esleep = 10;
-    showsleep();
-  }
-  if (sleepnever == 1) {
-    sleeptime = 14400000;
-    sleepnever = 0;
-    esleep = 11;
-    showsleep();
-  }
-  delay(350);
-}
-void showsleep() { // shows the sleep time on the settings page
-  tft.fillRect(110, 108, 80, 10, BLACK);
-  tft.setTextSize(1);
-  tft.setTextColor(WHITE);
-  if (sleeptime == 10000) {
-    tft.setCursor(130, 108);
-    tft.print("10 Seconds");
-  }
-  if (sleeptime == 20000) {
-    tft.setCursor(130, 108);
-    tft.print("20 Seconds");
-  }
-  if (sleeptime == 30000) {
-    tft.setCursor(130, 108);
-    tft.print("30 Seconds");
-  }
-  if (sleeptime == 60000) {
-    tft.setCursor(136, 108);
-    tft.print("1 Minute");
-  }
-  if (sleeptime == 120000) {
-    tft.setCursor(133, 108);
-    tft.print("2 Minutes");
-  }
-  if (sleeptime == 300000) {
-    tft.setCursor(133, 108);
-    tft.print("5 Minutes");
-  }
-  if (sleeptime == 600000) {
-    tft.setCursor(130, 108);
-    tft.print("10 Minutes");
-  }
-  if (sleeptime == 1200000) {
-    tft.setCursor(130, 108);
-    tft.print("20 Minutes");
-  }
-  if (sleeptime == 1800000) {
-    tft.setCursor(130, 108);
-    tft.print("30 Minutes");
-  }
-  if (sleeptime == 3600000) {
-    tft.setCursor(142, 108);
-    tft.print("1 Hour");
-  }
-  if (sleeptime == 14400000) {
-    tft.setCursor(139, 108);
-    tft.print("4 Hours");
-  }
-  if (sleepnever == 1) {
-    tft.setCursor(133, 108);
-    tft.print("Always On");
-  }
-}
+
+
+
 void option3down() { // adjust option 3 down in the settings screen
 }
 void option3up() { // adjust option 3 up in the settings screen
